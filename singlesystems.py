@@ -321,13 +321,32 @@ class Singlesystems(object):
                 [[planetperiod[0],planetperiod[1]], [planetradius[0], planetradius[1]]], args=[samplechain[x]])[0]
 
         self.samp = samp
+        self.occurence_rate_median = np.median(samp)
         return samp
 
-    def return_occurrence_median(self):
-        try:
-            return np.median(self.samp)
-        except NameError:
-            return
+    def return_occurrence_sample_semi(self, samplechain, sampsize,
+                                      planetradius, planetsemi, starmass):
+        """
+        planet semi is a pair of values with the inner and outer range
+        in AU
+        starmass is an point estimate right now in solar masses
+        """
+        G = 6.67408E-11
+        AU = 1.496E+11
+        planetsemi = np.array(planetsemi)
+        planetsemi *= AU
+        starmass *= 1.989E30
+        planetperiod = ((4. * np.pi**2 * planetsemi**3) / (G * starmass))**0.5 / 86400.
+
+        samp = np.zeros(sampsize)
+        for i,x in enumerate(
+                    np.random.choice(range(len(samplechain)), 
+                    size=sampsize)):
+            samp[i] = nquad(self.population_model2, 
+                [[planetperiod[0],planetperiod[1]], [planetradius[0], planetradius[1]]], args=[samplechain[x]])[0]
+
+        self.samp = samp
+        return samp
 
 
 class Singletypes(Singlesystems):

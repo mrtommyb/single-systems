@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     ss = singlesystems.Singletypes(stlr, kois)
 
-    # comp = np.load('comp.npy')
+    comp = np.load('comp_gstars.npy')
 
     planetperiod = [50, 300]
     planetradius = [0.75, 2.5]
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         dutycycle=dutycycle,
         rrmscdpp07p5=rrmscdpp07p5,
         requirestarmass=requirestarmass,
-        comp=None
+        comp=comp
         )
 
     theta_opt = ss.optimize()
@@ -55,4 +55,4 @@ if __name__ == '__main__':
     mc = ss.mcmc()
 
     occ = ss.return_occurrence_samples(mc, 1000,
-                                       [0.5, 2.0], [50, 300])
+                                       [0.833, 1.2], [50, 300])
