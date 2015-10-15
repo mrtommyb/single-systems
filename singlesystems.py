@@ -135,7 +135,6 @@ class Singlesystems(object):
         pos, _, _ = sampler.run_mcmc(pos, 4000)
         return sampler.flatchain
 
-
     def get_pdet(self, star, aor, period, rp, e):
         """
         Equation (5) from Burke et al. Estimate the detection efficiency
@@ -310,6 +309,12 @@ class Singlesystems(object):
     def population_model2(self,period, rp, theta):
         v = self.population_model(theta, period, rp, )
         return v
+
+    def return_occurrence(self, parameters, 
+        planetradius, planetperiod):
+        occ = nquad(self.population_model2, 
+            [[planetperiod[0],planetperiod[1]], [planetradius[0], planetradius[1]]], args=[parameters])[0]
+        return occ
 
     def return_occurrence_samples(self, samplechain, sampsize, 
         planetradius, planetperiod):
