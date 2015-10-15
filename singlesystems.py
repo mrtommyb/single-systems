@@ -28,21 +28,21 @@ class Singlesystems(object):
         self.stlr = stlr
         self.kois = kois
 
-    def samplesetup(self, 
-        planetperiod = [-np.inf, np.inf], 
-        planetradius = [-np.inf, np.inf], 
-        startemp = [-np.inf, np.inf], 
-        starradius = [-np.inf, np.inf],
-        starmass = [-np.inf, np.inf],
-        dataspan = [-np.inf, np.inf],
-        dutycycle = [-np.inf, np.inf],
-        rrmscdpp07p5 = [-np.inf, np.inf],
-        requirestarmass = True,
-        periodgridspacing = 57,
-        radiusgridspacing = 61,
-        bounds = [(-5, 5), (-5, 5), (-5, 5)],
-        comp = None
-        ):
+    def samplesetup(self,
+                    planetperiod=[-np.inf, np.inf],
+                    planetradius=[-np.inf, np.inf],
+                    startemp=[-np.inf, np.inf],
+                    starradius=[-np.inf, np.inf],
+                    starmass=[-np.inf, np.inf],
+                    dataspan=[-np.inf, np.inf],
+                    dutycycle=[-np.inf, np.inf],
+                    rrmscdpp07p5=[-np.inf, np.inf],
+                    requirestarmass=True,
+                    periodgridspacing=57,
+                    radiusgridspacing=61,
+                    bounds=[(-5, 5), (-5, 5), (-5, 5)],
+                    comp=None
+                    ):
         """
         this will change the state of self.stlr and self.kois
         """
@@ -63,16 +63,15 @@ class Singlesystems(object):
         if requirestarmass:
             m &= np.isfinite(self.stlr.mass)
 
-        base_stlr = pd.DataFrame(self.stlr)
         self.stlr = pd.DataFrame(self.stlr[m])
         self.selectedstars = len(self.stlr)
 
         # Join on the stellar list.
-        self.kois = pd.merge(self.kois, self.stlr[["kepid"]], on="kepid", how="inner")
+        self.kois = pd.merge(self.kois, self.stlr[["kepid"]],
+                             on="kepid", how="inner")
 
         # make cuts based on the planets catalog
         m = self.kois.koi_pdisposition == "CANDIDATE"
-        base_kois = pd.DataFrame(self.kois[m])
         m &= (planetperiod[0] <= self.kois.koi_period) & (self.kois.koi_period <= planetperiod[1])
         m &= np.isfinite(self.kois.koi_prad) & (planetradius[0] <= self.kois.koi_prad) & (self.kois.koi_prad <= planetradius[1])
 
@@ -80,7 +79,10 @@ class Singlesystems(object):
 
         self.selectedkois = len(self.kois)
 
+        self._setcompleteness(periodgridspacing, radiusgridspacing, comp)
 
+
+    def _setcompleteness(self, periodgridspacing, radiusgridspacing, comp):
         self.cdpp_cols = [k for k in self.stlr.keys() if k.startswith("rrmscdpp")]
         self.cdpp_vals = np.array([k[-4:].replace("p", ".") for k in self.cdpp_cols], dtype=float)
 
@@ -92,9 +94,8 @@ class Singlesystems(object):
                                  dtype=float)
 
         period = np.linspace(self.planetperiod[0], self.planetperiod[1], periodgridspacing)
-        rp = np.linspace(planetradius[0], planetradius[1], radiusgridspacing)
+        rp = np.linspace(self.planetradius[0], self.planetradius[1], radiusgridspacing)
         self.period_grid, self.rp_grid = np.meshgrid(period, rp, indexing="ij")
-        
 
         self.koi_periods = np.array(self.kois.koi_period)
         self.koi_rps = np.array(self.kois.koi_prad)
@@ -331,12 +332,86 @@ class Singlesystems(object):
         try:
             return np.median(self.samp)
         except NameError:
-            return 
+            return
 
 
+class Singletypes(Singlesystems):
 
+    def __init__(self, stlr, kois):
+        """
+        stlr is the stellar catalog
+        kois is the koi catalog
+        """
+        self.stlr = stlr
+        self.kois = kois
+        super(Singlesystems, self).__init__()
 
+    def samplesetup(self,
+                    planetperiod=[-np.inf, np.inf],
+                    planetradius=[-np.inf, np.inf],
+                    startype='G',
+                    starradius=[-np.inf, np.inf],
+                    starmass=[-np.inf, np.inf],
+                    dataspan=[-np.inf, np.inf],
+                    dutycycle=[-np.inf, np.inf],
+                    rrmscdpp07p5=[-np.inf, np.inf],
+                    requirestarmass=True,
+                    periodgridspacing=57,
+                    radiusgridspacing=61,
+                    bounds=[(-5, 5), (-5, 5), (-5, 5)],
+                    comp=None
+                    ):
+        self.planetperiod = planetperiod
+        self.planetradius = planetradius
+        self.bounds = bounds
 
+        # make cuts on the stellar catalog
+        m = self.maskstartype(startype)
+        m &= (starradius[0] <= self.stlr.radius) & (self.stlr.radius <= starradius[1])
+        m &= (starmass[0] <= self.stlr.mass) & (self.stlr.mass <= starmass[1])
+
+        m &= (dataspan[0] <= self.stlr.dataspan) & (self.stlr.dataspan <= dataspan[1])
+        m &= (dutycycle[0] <= self.stlr.dutycycle) & (self.stlr.dutycycle <= dutycycle[1])
+        m &= (rrmscdpp07p5[0] <= self.stlr.rrmscdpp07p5) & (self.stlr.rrmscdpp07p5 <= rrmscdpp07p5[1])
+
+        if requirestarmass:
+            m &= np.isfinite(self.stlr.mass)
+
+        self.stlr = pd.DataFrame(self.stlr[m])
+        self.selectedstars = len(self.stlr)
+
+        # Join on the stellar list.
+        self.kois = pd.merge(self.kois, self.stlr[["kepid"]],
+                             on="kepid", how="inner")
+
+        # make cuts based on the planets catalog
+        m = self.kois.koi_pdisposition == "CANDIDATE"
+        m &= (planetperiod[0] <= self.kois.koi_period) & (self.kois.koi_period <= planetperiod[1])
+        m &= np.isfinite(self.kois.koi_prad) & (planetradius[0] <= self.kois.koi_prad) & (self.kois.koi_prad <= planetradius[1])
+
+        self.kois = pd.DataFrame(self.kois[m])
+
+        self.selectedkois = len(self.kois)
+
+        self._setcompleteness(periodgridspacing, radiusgridspacing, comp)
+
+    def maskstartype(self, startype):
+        if startype == 'M':
+            m = (0 <= self.stlr.teff) & (self.stlr.teff <= 3900)
+
+        elif startype == 'K':
+            m = (3900 < self.stlr.teff) & (self.stlr.teff <= 5300)
+
+        elif startype == 'G':
+            m = (5300 < self.stlr.teff) & (self.stlr.teff <= 6000)
+
+        elif startype == 'F':
+            m = (6000 < self.stlr.teff) & (self.stlr.teff <= 7500)
+
+        elif startype == 'A':
+            m = (7500 < self.stlr.teff) & (self.stlr.teff <= 10000)
+
+        return m
 
 
 
